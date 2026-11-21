@@ -9,6 +9,7 @@ secret ever has to appear in source code, command lines, or URLs:
     OPCUA_TIMEOUT         per-request timeout in seconds (default: 5)
     OPCUA_POLL_INTERVAL   default polling interval in seconds (default: 0.1)
     OPCUA_ALLOW_WRITES    "1"/"true" enables write access (default: read-only)
+    OPCUA_DRY_RUN         "1"/"true" uses the in-process fake PLC (development)
 
 The bootstrap build speaks SecurityPolicy None (anonymous).  Username
 authentication is wired through but requires a signed/encrypted channel,
@@ -55,6 +56,7 @@ class PlcConfig:
             timeout=float(os.environ.get("OPCUA_TIMEOUT", "5")),
             poll_interval=float(os.environ.get("OPCUA_POLL_INTERVAL", "0.1")),
             write_enabled=_env_flag("OPCUA_ALLOW_WRITES"),
+            dry_run=_env_flag("OPCUA_DRY_RUN"),
             username=os.environ.get("OPCUA_USERNAME") or None,
             password=os.environ.get("OPCUA_PASSWORD") or None,
         )

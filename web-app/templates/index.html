@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roboter-Chat</title>
+<style>
+  :root { --bg:#fff; --fg:#1d1d1f; --muted:#6b6b70; --card:#f4f4f6; --line:#d8d8de;
+          --accent:#2f6fed; --user:#2f6fed; --bot:#f4f4f6; --rec:#d93025; --ok:#188038; --bad:#d93025; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#17181b; --fg:#ececf0; --muted:#9a9aa3; --card:#222328; --line:#35363d;
+            --accent:#6c9bff; --user:#2f5fd0; --bot:#222328; --rec:#ff6b5e; --ok:#34c759; --bad:#ff6b5e; }
+  }
+  * { box-sizing:border-box; }
+  html,body { height:100%; }
+  body { margin:0; font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+         background:var(--bg); color:var(--fg);
+         height:100dvh; overflow:hidden; }
+  main { display:flex; flex-direction:column; height:100dvh;
+         padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+
+  header { display:flex; align-items:center; justify-content:space-between;
+           padding:10px 14px; border-bottom:1px solid var(--line); flex:none; }
+  h1 { font-size:1.05rem; margin:0; }
+  .badges { display:flex; gap:6px; }
+  .badge { font-size:.7rem; font-weight:600; padding:3px 8px; border-radius:999px;
+           background:var(--card); color:var(--muted); border:1px solid var(--line); }
+  .badge.on { color:var(--ok); border-color:var(--ok); }
+  .badge.off { color:var(--bad); border-color:var(--bad); }
+
+  #messages { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px;
+              scrollbar-width:thin; }
+  .bubble { max-width:85%; padding:10px 12px; border-radius:14px; white-space:pre-wrap;
+            word-break:break-word; font-size:.95rem; }
+  .bubble.user { align-self:flex-end; background:var(--user); color:#fff; border-bottom-right-radius:4px; }
+  .bubble.bot  { align-self:flex-start; background:var(--bot); border:1px solid var(--line);
+                 border-bottom-left-radius:4px; }
+  .bubble.err  { align-self:flex-start; background:transparent; border:1px dashed var(--bad); color:var(--bad); }
+  .tools { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+  .chip { font-size:.7rem; padding:2px 8px; border-radius:999px; background:var(--card);
+          border:1px solid var(--line); color:var(--muted); }
+  .chip.bad { color:var(--bad); border-color:var(--bad); }
+  .typing { align-self:flex-start; color:var(--muted); font-size:.85rem; padding:4px 2px; }
+
+  footer { flex:none; display:flex; gap:8px; align-items:center; padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+           border-top:1px solid var(--line); background:var(--bg); }
+  #msg { flex:1; padding:10px 12px; border:1px solid var(--line); border-radius:999px;
+         background:var(--card); color:var(--fg); font:inherit; outline:none; min-width:0; }
+  #send,#mic { flex:none; width:46px; height:46px; border-radius:50%; border:0; cursor:pointer;
+               font-size:1.2rem; display:grid; place-items:center; }
+  #send { background:var(--accent); color:#fff; }
+  #send:disabled { opacity:.5; }
+  #mic { background:var(--card); border:1px solid var(--line); color:var(--fg); }
+  #mic.on { background:var(--rec); color:#fff; border-color:var(--rec); animation:pulse 1.2s infinite; }
+  @keyframes pulse { 50% { box-shadow:0 0 0 8px color-mix(in srgb, var(--rec) 25%, transparent); } }
+  #timer { font-size:.75rem; color:var(--muted); min-width:34px; text-align:center;
+           visibility:hidden; }
+  #timer.show { visibility:visible; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🤖 Roboter-Chat (c500)</h1>
+    <div class="badges">
+      <span class="badge" id="badge-plc">PLC</span>
+      <span class="badge" id="badge-pi">KI</span>
+    </div>
+  </header>
+
+  <section id="messages">
+    <div class="bubble bot">Willkommen! Sag mir, was der Roboter tun soll – per Sprache oder Text.
+Beispiele: „Zeig den Status”, „Fahre nach Hause”, „Profil 1 zeigen”.</div>
+  </section>
+
+  <footer>
+    <button id="mic" title="Spracheingabe">🎙</button>
+    <span id="timer"></span>
+    <input id="msg" placeholder="Befehl eingeben…" enterkeyhint="send" autocomplete="off">
+    <button id="send" title="Senden">➤</button>
+  </footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const msgs = $("messages");
+let recorder = null, chunks = [], stream = null, t0 = 0, tick = null, busy = false;
+
+function scrollDown(){ msgs.scrollTop = msgs.scrollHeight; }
+
+function addBubble(cls, text, tools) {
+  const div = document.createElement("div");
+  div.className = "bubble " + cls;
+  div.textContent = text;
+  if (tools && tools.length) {
+    const row = document.createElement("div");
+    row.className = "tools";
+    for (const t of tools) {
+      const c = document.createElement("span");
+      c.className = "chip" + (t.ok === false ? " bad" : "");
+      c.textContent = (t.ok === false ? "✖ " : "✔ ") + (t.tool || "?");
+      row.appendChild(c);
+    }
+    div.appendChild(row);
+  }
+  msgs.appendChild(div);
+  scrollDown();
+  return div;
+}
+
+async function sendChat() {
+  const text = $("msg").value.trim();
+  if (!text || busy) return;
+  $("msg").value = "";
+  addBubble("user", text);
+  busy = true;
+  $("send").disabled = true;
+  const typing = addBubble("", "…");
+  typing.classList.add("typing");
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text }),
+    });
+    const data = await res.json();
+    typing.remove();
+    if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
+    addBubble("bot", data.reply || "(keine Antwort)", data.tool_calls);
+  } catch (e) {
+    typing.remove();
+    addBubble("err", "Fehler: " + e.message);
+  } finally {
+    busy = false;
+    $("send").disabled = false;
+  }
+}
+
+function pickMime() {
+  const opts = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
+  return opts.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+}
+
+async function startRec() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    addBubble("err", "Mikrofon nicht verfügbar. HTTPS (oder localhost) erforderlich.");
+    return;
+  }
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { addBubble("err", "Mikrofon-Fehler: " + e.message); return; }
+  chunks = [];
+  const mime = pickMime();
+  recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  recorder.onstop = sendAudio;
+  recorder.start();
+  t0 = Date.now();
+  tick = setInterval(() => $("timer").textContent = ((Date.now() - t0) / 1000).toFixed(1) + " s", 100);
+  $("mic").classList.add("on");
+  $("timer").classList.add("show");
+}
+
+function stopRec() {
+  clearInterval(tick);
+  $("timer").textContent = "";
+  $("timer").classList.remove("show");
+  recorder.stop();
+  stream.getTracks().forEach(t => t.stop());
+  $("mic").classList.remove("on");
+}
+
+async function sendAudio() {
+  const type = recorder.mimeType || "audio/webm";
+  const blob = new Blob(chunks, { type });
+  if (Date.now() - t0 < 300 || blob.size < 500) return;
+  addBubble("user", "🎙 (Ton wird verarbeitet…)");
+  busy = true; $("send").disabled = true;
+  try {
+    const res = await fetch("/api/transcribe", { method: "POST",
+      headers: { "Content-Type": type }, body: blob });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
+    const text = (data.text || "").trim();
+    if (!text) { addBubble("err", "Keine Sprache erkannt."); return; }
+    // replace the placeholder bubble with the transcript and auto-send
+    const bubbles = msgs.querySelectorAll(".bubble.user");
+    bubbles[bubbles.length - 1].remove();
+    $("msg").value = text;
+    await sendChat();
+  } catch (e) {
+    addBubble("err", "Transkription fehlgeschlagen: " + e.message);
+    busy = false; $("send").disabled = false;
+  }
+}
+
+$("send").onclick = sendChat;
+$("msg").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+$("mic").onclick = () => (recorder && recorder.state === "recording") ? stopRec() : startRec();
+
+async function pollHealth() {
+  try {
+    const res = await fetch("/api/health");
+    const h = await res.json();
+    for (const [key, id] of [["plc","badge-plc"],["pi","badge-pi"]]) {
+      const el = $(id);
+      el.className = "badge " + (h[key] ? "on" : "off");
+    }
+  } catch { /* offline */ }
+}
+pollHealth();
+setInterval(pollHealth, 10000);
+</script>
+</body>
+</html>

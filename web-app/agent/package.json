@@ -1,0 +1,8 @@
+{
+  "name": "robot-agent",
+  "private": true,
+  "description": "Pi agent runtime for the robot chat web app (LLM provider + robot tools extension)",
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.6.0"
+  }
+}

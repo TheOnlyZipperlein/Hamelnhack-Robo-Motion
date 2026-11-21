@@ -86,7 +86,7 @@ class SyncPlc:
             raise AttributeError(name)
         attr = getattr(self._robot, name)
         if inspect.iscoroutinefunction(attr):
-            def wrapper(*args: Any, **kwargs: Any) -> Any:
-                return self.call(attr(*args, **kwargs))
+            def wrapper(*args: Any, timeout: float | None = None, **kwargs: Any) -> Any:
+                return self.call(attr(*args, **kwargs), timeout)
             return wrapper
         return attr
