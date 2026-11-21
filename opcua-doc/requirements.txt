@@ -1,0 +1,3 @@
+# OPC-UA-Lese-Tool – Abhängigkeiten
+# Erfordert Python >= 3.11
+asyncua==2.1.0

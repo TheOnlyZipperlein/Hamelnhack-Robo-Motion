@@ -224,3 +224,6 @@ __marimo__/
 
 # Local agent instructions (keep out of version control)
 AGENTS.md
+
+# OPC-UA documentation: generated internal live reports (do not commit)
+opcua-doc/out/
