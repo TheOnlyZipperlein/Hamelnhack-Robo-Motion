@@ -25,8 +25,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # ======================= CONFIG =======================
 # Normally you only need to change API_BASE.
-API_BASE = "http://10.30.35.110:4001/v1"  # IP:PORT of your OpenAI-compatible server (http:// and /v1 optional)
-MODEL = "qwen"                       # model name your server expects 
+API_BASE = "http://localhost:11434"  # IP:PORT of your OpenAI-compatible server (http:// and /v1 optional)
+MODEL = "frozenlab/qwen3-asr:1.7b"                       # model name your server expects 
 API_KEY = ""                              # leave empty for local servers
 LANGUAGE = "de"                             # e.g. "de"; empty = auto-detect
 # ======================================================
@@ -173,8 +173,9 @@ def build_endpoint(base):
     if base.endswith("/audio/transcriptions"):
         return base
     if not base.endswith("/v1"):
-        base += "/v1"
-    return base + "/audio/transcriptions"
+        base += "/api/chat" # /v1
+    #return base + "/audio/transcriptions"
+    return base
 
 
 def ext_for(content_type):
