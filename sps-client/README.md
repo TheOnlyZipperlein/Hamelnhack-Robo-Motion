@@ -3,11 +3,12 @@
 Dieses Modul ist der **SPS-Client** des Projekts: Eine Python-Library, die
 die OPC-UA-Schnittstelle der SPS (`c500`, Zweig `GVL_Exchange`) in
 semantische **Wrapper-Funktionen** für die Robotiksteuerung übersetzt. Die
-künftige Web-App (Flask) ruft diese Funktionen auf; über die Web-App wird
-der Roboter von einem AI-Agenten gesteuert.
+Web-App ([`../web-app/`](../web-app/), Flask) ruft diese Funktionen auf;
+über die Web-App wird der Roboter von einem AI-Agenten gesteuert.
 
 ```
-AI-Agent → Web-App (Flask, geplant) → sps_client (dieses Modul) → OPC UA → SPS (c500)
+AI-Agent → Web-App (Flask) → sps_client (dieses Modul) → OPC UA → SPS (c500)
+                                  └─ SimRobot (gleiche API, ohne Anlage)
 ```
 
 Die Variablenspezifikation (NodeIds, Datentypen, Zugriffsrechte) stammt aus
@@ -37,7 +38,16 @@ Installation (falls die Projekt-Umgebung nicht reicht):
 | `sps_client/plc.py` | `PlcClient` – persistente Session, Low-Level Read/Write, Reconnect, Write-Gate; `FakeBackend` (Dry-Run) |
 | `sps_client/robot.py` | `Robot` – semantische Wrapper (Bewegung, Profile, Status, Warte-Helfer) |
 | `sps_client/bridge.py` | `SyncPlc` – blockierende Fassade für synchrone Frameworks (Flask) |
+| `sps_client/simulator.py` | `SimRobot` (gleiche API wie `Robot`, Physik nach Live-Messwerten), `jog_draw_legs`, headless `simulate_path` |
+| `sps_client/route.py` | `plan_route` (Segmente → ≤ 10 Wegpunkte), `verify_route` (Dry-Run-Bewertung), `compare_run` (Ist vs. Dry-Run, räumlich), PNG-Vorschau und Bild-Check-Kacheln |
+| `tests/` | Routen-, Jog-Zeichnen-, Zeichnungs- und Regressionstests |
 | `main.py` | CLI zum Testen: `ping`, `status`, `positions`, `profiles`, `demo` |
+
+Tests ausführen:
+
+```powershell
+$env:PYTHONPATH='sps-client'; .\.venv\Scripts\python.exe -m unittest discover -s sps-client\tests
+```
 
 ## 3. CLI-Nutzung
 
@@ -117,6 +127,15 @@ plc.close()
 | `reset_error()` | Fehler-Reset anfordern (`g_xErrorReset`) |
 | `wait_done(t)` / `wait_home_ready(t)` / `wait_no_fault(t)` | Polling bis Bedingung oder Timeout (gibt `False`) |
 | `wait_done_strict(t)` | wie `wait_done`, wirft `WaitTimeout` |
+| `clear_home_flag()` | `g_xHomeExecute` per Read-back löschen (Homing ist flankengetriggert) |
+| `move_to_drawing_start()` | Homing → Jog X+ → Jog Z+ nach (30, 35) |
+| `bank_waypoints()` / `draw_by_jog(...)` | Profilbank lesen und live achsparallel per Jog abfahren (Stillstand nach jedem Leg) |
+| `clear_command_flags()` | Alle 8 Befehlsflags per Read-back auf `False` |
+| `cancel_positioning()` | Laufende Positionierung/Jog-Zeichnung abbrechen |
+
+`status()` meldet die Warnung `20434` nicht als Warnung (Bedienerentscheid),
+sondern in `RobotStatus.ignored_warning`; mit gesetztem `g_xError` wird sie
+nicht unterdrückt.
 
 Die Bewegungswerte sind OPC-UA-Doubles (`i=11`); Skalierung und Einheiten sind nicht bestätigt.
 Status- und Steuersignale werden als Booleans bzw. Integer geliefert –
@@ -161,4 +180,4 @@ Skalierungsfaktoren (z. B. 0,1 mm pro LSB) müssen aus der Anlagendoku kommen.
 
 - [`../opcua-doc/`](../opcua-doc/) – Metadatenscanner + Interfacespezifikation
   (Quelle aller NodeIds)
-- [`../web-app/`](../web-app/) – (geplant) Flask-App, ruft diesen Client auf
+- [`../web-app/`](../web-app/) – Flask-App mit pi-Agent, ruft diesen Client auf
