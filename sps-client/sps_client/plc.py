@@ -27,7 +27,7 @@ import time
 from typing import Any, Protocol
 
 from asyncua import Client, ua
-from asyncua.ua.uaerrors import UaError
+from asyncua.ua.uaerrors import BadNodeIdUnknown, UaError
 
 from . import nodes
 from .config import PlcConfig
@@ -299,8 +299,13 @@ class PlcClient:
                         raise PlcConnectionError(f"cannot (re)establish PLC session: {exc}") from exc
             try:
                 return await action()
+            except BadNodeIdUnknown:
+                # Missing nodes do not indicate a broken session.
+                raise
             except _RETRYABLE as exc:
                 if attempt == 2:
+                    if not isinstance(exc, UaError):
+                        raise PlcConnectionError(f"PLC transport failed: {exc}") from exc
                     raise
                 logger.warning("transport error (%s); reconnecting once", exc)
                 async with self._lock:

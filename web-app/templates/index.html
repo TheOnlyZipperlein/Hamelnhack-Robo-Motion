@@ -28,6 +28,38 @@
   .badge.on { color:var(--ok); border-color:var(--ok); }
   .badge.off { color:var(--bad); border-color:var(--bad); }
 
+  /* --- simulator panel --- */
+  #simpanel { flex:none; border-bottom:1px solid var(--line); padding:8px 12px 12px; }
+  #simpanel.collapsed .canvas-wrap, #simpanel.collapsed .sim-row { display:none; }
+  .sim-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  #sim-toggle { flex:none; width:26px; height:22px; border-radius:6px; border:1px solid var(--line);
+                background:var(--card); color:var(--muted); font-size:.75rem; cursor:pointer;
+                display:grid; place-items:center; padding:0; }
+  .sim-title { font-weight:600; font-size:.85rem; }
+  #sim-pos { font-variant-numeric:tabular-nums; font-size:.78rem; color:var(--muted); flex:1;
+             white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #sim-mode { font-size:.7rem; font-weight:600; padding:2px 8px; border-radius:999px;
+              background:var(--card); color:var(--muted); border:1px solid var(--line); }
+  #sim-mode.fault { color:var(--bad); border-color:var(--bad); }
+  #sim-mode.move  { color:var(--accent); border-color:var(--accent); }
+  .canvas-wrap { position:relative; }
+  #simcv { display:block; width:100%; border-radius:8px; background:var(--card); touch-action:none; }
+  .home-tag { position:absolute; left:4px; bottom:-11px; font-size:.68rem; color:var(--muted);
+              background:var(--bg); padding:0 5px; border:1px solid var(--line); border-radius:6px;
+              pointer-events:none; }
+  .sim-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .sim-row[hidden] { display:none; }
+  .sim-btn { flex:1; padding:8px 4px; border-radius:8px; border:1px solid var(--line);
+             background:var(--card); color:var(--fg); font:inherit; font-size:.78rem; cursor:pointer;
+             user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+  .sim-btn:active { transform:scale(.96); }
+  .sim-btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .sim-btn.speed { flex:0 0 auto; min-width:44px; }
+  .sim-btn.speed.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .sim-label { font-size:11px; color:var(--muted); align-self:center; }
+  .jog { min-height:44px; font-size:.95rem; }
+  .jog.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+
   #messages { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px;
               scrollbar-width:thin; }
   .bubble { max-width:85%; padding:10px 12px; border-radius:14px; white-space:pre-wrap;
@@ -41,6 +73,26 @@
           border:1px solid var(--line); color:var(--muted); }
   .chip.bad { color:var(--bad); border-color:var(--bad); }
   .typing { align-self:flex-start; color:var(--muted); font-size:.85rem; padding:4px 2px; }
+  .badges { align-items:center; }
+  #btn-full-reset { font:inherit; font-size:.72rem; font-weight:600; padding:3px 10px; border-radius:999px;
+                    border:1px solid var(--bad); background:transparent; color:var(--bad); cursor:pointer; }
+  #btn-full-reset:disabled { opacity:.5; cursor:default; }
+  /* --- agent activity (what pi is doing) --- */
+  .activity { align-self:flex-start; max-width:92%; width:92%; font-size:.8rem; color:var(--muted);
+              border-left:3px solid var(--accent); padding:4px 0 4px 10px; display:flex;
+              flex-direction:column; gap:4px; }
+  .activity .head { font-weight:600; color:var(--fg); }
+  .act { white-space:pre-wrap; word-break:break-word; }
+  .act.think { font-style:italic; opacity:.85; }
+  .act.tool { border:1px solid var(--line); border-radius:8px; padding:4px 8px; background:var(--card); }
+  .act.tool .name { font-weight:600; color:var(--fg); }
+  .act.tool.error { border-color:var(--bad); }
+  .act.tool.running .name::after { content:" …"; }
+  .act code { font-size:.72rem; display:block; opacity:.8; max-height:4.5em; overflow:hidden; }
+  .act .res { font-size:.72rem; margin-top:2px; max-height:6em; overflow:auto; }
+  details.acts { margin-top:8px; font-size:.75rem; color:var(--muted); }
+  details.acts summary { cursor:pointer; }
+  details.acts .activity { width:100%; max-width:100%; margin-top:4px; }
 
   footer { flex:none; display:flex; gap:8px; align-items:center; padding:10px 12px calc(10px + env(safe-area-inset-bottom));
            border-top:1px solid var(--line); background:var(--bg); }
@@ -65,8 +117,51 @@
     <div class="badges">
       <span class="badge" id="badge-plc">PLC</span>
       <span class="badge" id="badge-pi">KI</span>
+      <button id="btn-full-reset" title="Chat neu starten und Roboter zum Zeichenstart fahren">⟲ Reset</button>
     </div>
   </header>
+
+  <!-- Gemeinsame Ansicht für Simulation und Live-Telemetrie -->
+  <section id="simpanel" hidden>
+    <div class="sim-head">
+      <button id="sim-toggle" title="Panel ein-/ausklappen">▾</button>
+      <span class="sim-title">Simulator</span>
+      <span id="sim-pos">x=–  z=–</span>
+      <span id="sim-mode">idle</span>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="simcv"></canvas>
+      <div class="home-tag" title="Machine home (15, −10) – außerhalb des Felds, nur per Homing erreichbar">🏠 Home</div>
+    </div>
+    <div class="sim-row" id="sim-motion">
+      <button class="sim-btn primary" id="btn-drawing-start">Zeichenstart</button>
+      <button class="sim-btn" id="btn-home">🏠 Home</button>
+      <button class="sim-btn primary" id="btn-path">▶ Pfad</button>
+      <button class="sim-btn" id="btn-stop">⏹ Stop</button>
+      <button class="sim-btn" id="btn-reset" title="Nur Simulator-Zustand zurücksetzen">⟲ Sim</button>
+    </div>
+    <div class="sim-row" id="sim-jog">
+      <button class="sim-btn jog" data-axis="z" data-positive="false">▲ Z+</button>
+      <button class="sim-btn jog" data-axis="z" data-positive="true">▼ Z−</button>
+      <button class="sim-btn jog" data-axis="x" data-positive="false">◀ X−</button>
+      <button class="sim-btn jog" data-axis="x" data-positive="true">▶ X+</button>
+    </div>
+    <div class="sim-row">
+      <span class="sim-label">Tempo</span>
+      <button class="sim-btn speed on" data-scale="1">1×</button>
+      <button class="sim-btn speed" data-scale="2">2×</button>
+      <button class="sim-btn speed" data-scale="5">5×</button>
+      <button class="sim-btn" id="btn-preview" disabled>Probelauf ansehen</button>
+      <span class="sim-label" id="ghost-tag" hidden>☁ letzter Dry-Run</span>
+      <button class="sim-btn" id="btn-clear-drawing" title="Alle gezeichneten Teile vom Canvas löschen (Roboter fährt nicht)" disabled>🗑 Zeichnung</button>
+    </div>
+    <div class="sim-row">
+      <button class="sim-btn" id="btn-bg" title="Bild als Hintergrund des Zeichenfelds hochladen – der Agent bekommt es als Kontext">🖼 Hintergrundbild</button>
+      <button class="sim-btn" id="btn-bg-clear" title="Hintergrundbild entfernen" hidden>✕ Bild</button>
+      <span class="sim-label" id="bg-tag" hidden></span>
+      <input type="file" id="bg-file" accept="image/*" hidden>
+    </div>
+  </section>
 
   <section id="messages">
     <div class="bubble bot">Willkommen! Sag mir, was der Roboter tun soll – per Sprache oder Text.
@@ -108,6 +203,58 @@ function addBubble(cls, text, tools) {
   return div;
 }
 
+// ---- live agent activity (GET /api/chat/activity) -------------------------
+let chatGen = 0;          // bumped by the reset button; late replies are dropped
+const TOOL_ICON = { running: "⏳", ok: "✔", error: "✖", aborted: "⏹" };
+
+function renderActivity(box, snap, live) {
+  box.replaceChildren();
+  const head = document.createElement("div");
+  head.className = "head";
+  const n = snap.items.filter(i => i.type === "tool").length;
+  head.textContent = live ? `🤖 Agent arbeitet … (${n} Tool-Aufrufe)` : `${n} Tool-Aufrufe`;
+  box.appendChild(head);
+  for (const it of snap.items) {
+    const d = document.createElement("div");
+    if (it.type === "thinking") {
+      d.className = "act think";
+      const t = it.text.trim();
+      d.textContent = "💭 " + (t.length > 400 ? "…" + t.slice(-400) : t);
+    } else if (it.type === "text") {
+      if (!live) continue;  // the final reply is shown as the bubble itself
+      d.className = "act";
+      d.textContent = "✍ " + it.text.trim();
+    } else if (it.type === "note") {
+      d.className = "act";
+      d.textContent = "ℹ " + it.text;
+    } else if (it.type === "tool") {
+      d.className = "act tool " + (it.status || "");
+      const name = document.createElement("div");
+      name.className = "name";
+      const ms = it.ms != null ? `  (${(it.ms / 1000).toFixed(1)} s)` : "";
+      name.textContent = `${TOOL_ICON[it.status] || "•"} ${it.name || "?"}${ms}`;
+      d.appendChild(name);
+      if (it.args && it.args !== "{}") {
+        const c = document.createElement("code");
+        c.textContent = it.args;
+        d.appendChild(c);
+      }
+      if (it.result) {
+        const r = document.createElement("div");
+        r.className = "res";
+        r.textContent = "→ " + it.result;
+        d.appendChild(r);
+      }
+    } else continue;
+    box.appendChild(d);
+  }
+}
+
+async function fetchActivity() {
+  const r = await fetch("/api/chat/activity");
+  return r.ok ? r.json() : null;
+}
+
 async function sendChat() {
   const text = $("msg").value.trim();
   if (!text || busy) return;
@@ -115,8 +262,26 @@ async function sendChat() {
   addBubble("user", text);
   busy = true;
   $("send").disabled = true;
-  const typing = addBubble("", "…");
-  typing.classList.add("typing");
+  const gen = chatGen;
+  const box = document.createElement("div");
+  box.className = "activity";
+  box.textContent = "🤖 Agent startet …";
+  msgs.appendChild(box);
+  scrollDown();
+  const baseline = (await fetchActivity().catch(() => null))?.run ?? 0;
+  let last = null, polling = true;
+  (async () => {
+    while (polling && gen === chatGen) {
+      const snap = await fetchActivity().catch(() => null);
+      if (snap && snap.run > baseline && polling) {
+        last = snap;
+        const nearBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 80;
+        renderActivity(box, snap, true);
+        if (nearBottom) scrollDown();
+      }
+      await new Promise(r => setTimeout(r, 400));
+    }
+  })();
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -124,17 +289,69 @@ async function sendChat() {
       body: JSON.stringify({ message: text }),
     });
     const data = await res.json();
-    typing.remove();
+    polling = false;
+    if (gen !== chatGen || data.stale) return;  // chat was reset meanwhile
+    box.remove();
     if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
-    addBubble("bot", data.reply || "(keine Antwort)", data.tool_calls);
+    const bubble = addBubble("bot", data.reply || "(keine Antwort)", data.tool_calls);
+    const final = await fetchActivity().catch(() => null);
+    const snap = final && final.run > baseline ? final : last;
+    if (snap && snap.items.some(i => i.type !== "text")) {
+      const det = document.createElement("details");
+      det.className = "acts";
+      const sum = document.createElement("summary");
+      sum.textContent = "Was der Agent gemacht hat";
+      const inner = document.createElement("div");
+      inner.className = "activity";
+      renderActivity(inner, snap, false);
+      det.append(sum, inner);
+      bubble.appendChild(det);
+    }
   } catch (e) {
-    typing.remove();
+    polling = false;
+    if (gen !== chatGen) return;
+    box.remove();
     addBubble("err", "Fehler: " + e.message);
   } finally {
-    busy = false;
-    $("send").disabled = false;
+    if (gen === chatGen) {
+      busy = false;
+      $("send").disabled = false;
+    }
   }
 }
+
+// ---- full reset: new agent session + robot to drawing start ---------------
+const WELCOME = msgs.innerHTML;
+$("btn-full-reset").onclick = async () => {
+  const btn = $("btn-full-reset");
+  if (!confirm("Chat zurücksetzen und Roboter zum Zeichenstart (30, 35) fahren?")) return;
+  chatGen++;
+  btn.disabled = true;
+  busy = true;
+  $("send").disabled = true;
+  msgs.innerHTML = WELCOME;
+  const note = addBubble("", "⟲ Reset: neue Agent-Sitzung, Roboter fährt zum Zeichenstart … (~20 s)");
+  note.classList.add("typing");
+  try {
+    const res = await fetch("/api/reset", { method: "POST" });
+    const d = await res.json().catch(() => ({}));
+    note.remove();
+    if (d.agent_error) addBubble("err", "Agent: " + d.agent_error);
+    if (d.robot_error) addBubble("err", "Roboter: " + d.robot_error);
+    if (!res.ok && !d.agent_error && !d.robot_error) addBubble("err", d.error || ("HTTP " + res.status));
+    if (d.x != null) {
+      addBubble("bot", `Bereit. Neue Sitzung, Roboter am Zeichenstart (${d.x.toFixed(2)}, ${d.z.toFixed(2)}).`);
+    }
+  } catch (e) {
+    note.remove();
+    addBubble("err", "Reset fehlgeschlagen: " + e.message);
+  } finally {
+    btn.disabled = false;
+    busy = false;
+    $("send").disabled = false;
+    if (typeof loadGhost === "function" && simOn) { loadGhost().catch(() => {}); loadWaypoints().catch(() => {}); }
+  }
+};
 
 function pickMime() {
   const opts = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
@@ -181,11 +398,12 @@ async function sendAudio() {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
     const text = (data.text || "").trim();
-    if (!text) { addBubble("err", "Keine Sprache erkannt."); return; }
+    if (!text) { addBubble("err", "Keine Sprache erkannt."); busy = false; $("send").disabled = false; return; }
     // replace the placeholder bubble with the transcript and auto-send
     const bubbles = msgs.querySelectorAll(".bubble.user");
     bubbles[bubbles.length - 1].remove();
     $("msg").value = text;
+    busy = false;  // sendChat() refuses to run while busy
     await sendChat();
   } catch (e) {
     addBubble("err", "Transkription fehlgeschlagen: " + e.message);
@@ -197,6 +415,520 @@ $("send").onclick = sendChat;
 $("msg").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
 $("mic").onclick = () => (recorder && recorder.state === "recording") ? stopRec() : startRec();
 
+// ===========================================================================
+// Zeichenfeld: Simulator oder Live-Telemetrie
+// ===========================================================================
+// Welt = verifiziertes sicheres Feld (21.11.2026): x: 30…260, z: 35…150.
+// x → Breite (rechts), z → Höhe (hoch). Home (15, −10) liegt AUSSERHALB.
+const WORLD = { xMin: 30, xMax: 260, zMin: 35, zMax: 150 };
+let simOn = false;
+let canvasMode = null;
+let statePending = false;
+let waypoints = [];
+let ghost = null;
+let previewTrajectory = [];
+let previewPlaying = false;
+let previewSpeed = 1;
+
+// Spielt ALLE erfolgreichen Probeläufe seit dem letzten Reset nacheinander ab;
+// fertige Läufe bleiben als Strich stehen.
+async function playPreview() {
+  if (previewPlaying) return;
+  let runs = [];
+  try {
+    const r = await fetch("/api/route/history");
+    if (r.ok) runs = ((await r.json()).runs || []).filter(x => (x.trajectory || []).length >= 2);
+  } catch { /* offline */ }
+  if (!runs.length && previewTrajectory.length >= 2) runs = [{ trajectory: previewTrajectory }];
+  if (!runs.length) return;
+  previewPlaying = true;
+  const doneTrails = [];
+  let run = 0, index = 0, elapsed = 0, last = performance.now();
+  function frame(now) {
+    elapsed += (now - last) * previewSpeed / 1000;
+    last = now;
+    const trajectory = runs[run].trajectory;
+    while (index + 1 < trajectory.length - 1 && trajectory[index + 1][0] - trajectory[0][0] <= elapsed) index++;
+    const [t0, x0, z0] = trajectory[index];
+    const [t1, x1, z1] = trajectory[index + 1];
+    const base = trajectory[0][0];
+    const f = t1 > t0 ? Math.max(0, Math.min(1, (elapsed - (t0 - base)) / (t1 - t0))) : 1;
+    const x = x0 + f * (x1 - x0), z = z0 + f * (z1 - z0);
+    const trail = [...trajectory.slice(0, index + 1).map(p => p.slice(1)), [x, z]];
+    drawSim({ x, z, mode: "preview", trails: doneTrails, trail });
+    $("sim-mode").textContent = runs.length > 1 ? `Probelauf ${run + 1}/${runs.length}` : "Probelauf";
+    $("sim-pos").textContent = `x=${x.toFixed(1)}  z=${z.toFixed(1)}`;
+    if (index + 1 < trajectory.length - 1 || f < 1) return requestAnimationFrame(frame);
+    doneTrails.push(trajectory.map(p => p.slice(1)));
+    if (++run < runs.length) {
+      index = 0; elapsed = 0;
+      return requestAnimationFrame(frame);
+    }
+    previewPlaying = false;
+  }
+  requestAnimationFrame(frame);
+}
+
+function theme() {
+  const cs = getComputedStyle(document.documentElement);
+  const g = n => cs.getPropertyValue(n).trim();
+  return { fg:g("--fg"), muted:g("--muted"), line:g("--line"),
+           accent:g("--accent"), ok:g("--ok"), bad:g("--bad") };
+}
+
+function fitCanvas() {
+  const cv = $("simcv");
+  const wrap = cv.parentElement;
+  const availW = Math.max(120, wrap.clientWidth);
+  // Height cap: the canvas must never crowd the chat (mobile & wide desktops).
+  const maxH = Math.max(120, Math.min(window.innerHeight * 0.38, 300));
+  const worldW = WORLD.xMax - WORLD.xMin;
+  const worldH = WORLD.zMax - WORLD.zMin;
+  const scale = Math.min(availW / worldW, maxH / worldH);
+  const w = worldW * scale;
+  const h = worldH * scale;
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = w + "px";
+  cv.style.height = h + "px";
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  cv.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", () => { if (simOn) fitCanvas(); });
+
+const sx = (x, s) => (x - WORLD.xMin) * s;
+const sy = (z, s) => (WORLD.zMax - z) * s;
+
+function drawSim(st) {
+  const cv = $("simcv");
+  const ctx = cv.getContext("2d");
+  const w = parseFloat(cv.style.width) || 0;
+  const h = parseFloat(cv.style.height) || 0;
+  if (!w || !h) return;
+  const s = w / (WORLD.xMax - WORLD.xMin);
+  const c = theme();
+  ctx.clearRect(0, 0, w, h);
+
+  // Hintergrundbild (gestreckt über die ganze sichere Box)
+  if (bgImage) {
+    ctx.globalAlpha = 0.8;
+    ctx.drawImage(bgImage, 0, 0, w, h);
+    ctx.globalAlpha = 1;
+  }
+
+  // Gitter (25 Einheiten)
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = c.line;
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  for (let gx = WORLD.xMin + 25; gx < WORLD.xMax; gx += 25) {
+    ctx.moveTo(sx(gx, s), 0); ctx.lineTo(sx(gx, s), h);
+  }
+  for (let gz = WORLD.zMin + 25; gz < WORLD.zMax; gz += 25) {
+    ctx.moveTo(0, sy(gz, s)); ctx.lineTo(w, sy(gz, s));
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Schutzgrenze: draußen endet der sichere Bereich (rot)
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = c.bad;
+  ctx.strokeRect(1.5, 1.5, w - 3, h - 3);
+
+  // Ghost: letzter Dry-Run (gestrichelte Plan-Bahn)
+  if (ghost && ghost.nominal && ghost.nominal.length > 1) {
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ghost.nominal.forEach(([px, pz], i) => {
+      const X = sx(px, s), Y = sy(pz, s);
+      i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+    });
+    ctx.lineWidth = 2;
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = c.muted;
+    ctx.globalAlpha = 0.65;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Wegpunkte (Profilbank)
+  for (const wp of waypoints) {
+    if (wp.x < WORLD.xMin || wp.x > WORLD.xMax || wp.z < WORLD.zMin || wp.z > WORLD.zMax) continue;
+    ctx.beginPath();
+    ctx.arc(sx(wp.x, s), sy(wp.z, s), 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = c.muted;
+    ctx.fill();
+  }
+
+  // Zeichnung: alle Teile (Stift unten) bleiben stehen, bis sie explizit gelöscht werden
+  const preview = st && st.mode === "preview";
+  for (const part of drawingParts) {
+    const pts = part.trail || [];
+    if (pts.length < 2) continue;
+    ctx.beginPath();
+    pts.forEach(([px, pz], i) => {
+      const X = sx(px, s), Y = sy(pz, s);
+      i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+    });
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = c.accent;
+    ctx.globalAlpha = 0.9;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Fahrweg des aktuellen Laufs (inkl. Zufahrt mit Stift oben): dünn.
+  // Beim Probelauf-Replay zusätzlich die bereits abgespielten Läufe.
+  const trails = [...((st && st.trails) || []), ...((st && st.trail) ? [st.trail] : [])];
+  for (const trail of trails) {
+    if (trail.length < 2) continue;
+    ctx.beginPath();
+    trail.forEach(([px, pz], i) => {
+      const X = sx(px, s), Y = sy(pz, s);
+      i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+    });
+    ctx.lineWidth = preview ? 2 : 1;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = c.accent;
+    ctx.globalAlpha = preview ? 0.85 : 0.4;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Roboter-Marker
+  if (st) {
+    const X = sx(st.x, s), Y = sy(st.z, s);
+    const fault = st.error || st.warning;
+    const col = fault ? c.bad : (st.mode !== "idle" ? c.accent : c.ok);
+    ctx.beginPath();
+    ctx.arc(X, Y, 7, 0, Math.PI * 2);
+    ctx.fillStyle = col;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+  }
+}
+
+async function loadWaypoints() {
+  const ps = await Promise.all(Array.from({ length: 10 }, (_, i) =>
+    fetch("/api/robot/profiles/" + (i + 1)).then(r => (r.ok ? r.json() : null))
+  ));
+  const end = ps.findIndex(p => p?.x_halt);
+  waypoints = (end < 0 ? ps : ps.slice(0, end + 1)).filter(Boolean)
+    .map(p => ({ x: p.x_pos, z: p.z_pos, n: p.index }))
+    .filter(p => Number.isFinite(p.x) && Number.isFinite(p.z));
+}
+
+// ---- Hintergrundbild --------------------------------------------------------
+// Der Browser normalisiert das Bild (gestreckt auf 2:1, Verzerrung ist ok):
+//   display: JPEG 920×460 fürs Canvas
+//   grid:    PNG 920×460 mit Weltkoordinaten-Raster (sieht der Agent)
+//   rgb:     rohe RGB-Pixel 460×230 (Server blendet sie in die Dry-Run-Vorschau)
+let bgImage = null;
+let bgVersion = 0;
+
+async function loadBackground() {
+  try {
+    const r = await fetch("/api/background/info");
+    if (!r.ok) return;
+    const d = await r.json();
+    const v = d.has ? d.version : 0;
+    $("btn-bg-clear").hidden = !d.has;
+    const tag = $("bg-tag");
+    tag.hidden = !d.has;
+    tag.textContent = d.has ? `🖼 ${d.name}` : "";
+    if (v === bgVersion) return;
+    bgVersion = v;
+    if (!d.has) { bgImage = null; return; }
+    const img = new Image();
+    img.onload = () => { if (bgVersion === v) bgImage = img; };
+    img.src = `/api/background/display?v=${v}`;
+  } catch { /* offline */ }
+}
+
+async function decodeImage(file) {
+  try {
+    return await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      await new Promise((ok, fail) => { img.onload = ok; img.onerror = fail; img.src = url; });
+      return img;
+    } catch {
+      throw new Error("Bildformat wird vom Browser nicht unterstützt (z. B. HEIC → JPG/PNG verwenden)");
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
+function canvasOf(w, h) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  return c;
+}
+
+function drawWorldGrid(ctx, w, h) {
+  const px = x => (x - WORLD.xMin) * w / (WORLD.xMax - WORLD.xMin);
+  const py = z => (WORLD.zMax - z) * h / (WORLD.zMax - WORLD.zMin);
+  const lines = (major, style, width) => {
+    ctx.beginPath();
+    for (let x = 30; x <= 260; x += 10) if ((x % 50 === 0) === major) { ctx.moveTo(px(x), 0); ctx.lineTo(px(x), h); }
+    for (let z = 40; z <= 150; z += 10) if ((z % 50 === 0) === major) { ctx.moveTo(0, py(z)); ctx.lineTo(w, py(z)); }
+    ctx.strokeStyle = style; ctx.lineWidth = width; ctx.stroke();
+  };
+  lines(false, "rgba(255,255,255,0.45)", 1);
+  lines(false, "rgba(0,0,0,0.25)", 0.5);
+  lines(true, "rgba(255,0,170,0.9)", 2);
+  ctx.font = "bold 13px sans-serif";
+  ctx.textBaseline = "top";
+  const label = (text, x, y) => {
+    const tw = ctx.measureText(text).width;
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillRect(x, y, tw + 6, 16);
+    ctx.fillStyle = "#b0006f";
+    ctx.fillText(text, x + 3, y + 1);
+  };
+  for (let x = 50; x <= 250; x += 50) label(`x=${x}`, px(x) + 2, h - 18);
+  for (let z = 50; z <= 150; z += 50) label(`z=${z}`, 2, Math.min(h - 36, py(z) + 2));
+  label("x=30", 2, h - 18);
+  label("z=35", 2, h - 36);
+}
+
+function bytesToBase64(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+async function uploadBackground(file) {
+  const src = await decodeImage(file);
+  const disp = canvasOf(920, 460);
+  disp.getContext("2d").drawImage(src, 0, 0, 920, 460);
+  const small = canvasOf(460, 230);
+  const sctx = small.getContext("2d");
+  sctx.drawImage(src, 0, 0, 460, 230);
+  const rgba = sctx.getImageData(0, 0, 460, 230).data;
+  const rgb = new Uint8Array(460 * 230 * 3);
+  for (let i = 0, o = 0; i < rgba.length; i += 4) {
+    // Transparenz gegen Weiß mischen
+    const a = rgba[i + 3] / 255;
+    rgb[o++] = rgba[i] * a + 255 * (1 - a);
+    rgb[o++] = rgba[i + 1] * a + 255 * (1 - a);
+    rgb[o++] = rgba[i + 2] * a + 255 * (1 - a);
+  }
+  const grid = canvasOf(920, 460);
+  const gctx = grid.getContext("2d");
+  gctx.fillStyle = "#fff"; gctx.fillRect(0, 0, 920, 460);
+  gctx.drawImage(src, 0, 0, 920, 460);
+  // Scharfe Rohpixel 920×460 (ohne Raster) für die Zoom-Prüfung des Agenten
+  const hiData = gctx.getImageData(0, 0, 920, 460).data;
+  const rgbHi = new Uint8Array(920 * 460 * 3);
+  for (let i = 0, o = 0; i < hiData.length; i += 4) {
+    rgbHi[o++] = hiData[i]; rgbHi[o++] = hiData[i + 1]; rgbHi[o++] = hiData[i + 2];
+  }
+  drawWorldGrid(gctx, 920, 460);
+  const dctx = disp.getContext("2d");
+  dctx.globalCompositeOperation = "destination-over";
+  dctx.fillStyle = "#fff"; dctx.fillRect(0, 0, 920, 460);
+  const r = await fetch("/api/background", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: file.name || "Bild",
+      display: disp.toDataURL("image/jpeg", 0.85),
+      grid: grid.toDataURL("image/png"),
+      rgb: bytesToBase64(rgb),
+      rgb_hi: bytesToBase64(rgbHi),
+    }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) throw new Error(d.error || `HTTP ${r.status}`);
+  await loadBackground();
+  addBubble("bot", `Hintergrundbild „${d.name}“ gesetzt. Der Agent bekommt es mit deiner nächsten Nachricht als Kontext.`);
+}
+
+let drawingParts = [];
+async function loadDrawing() {
+  try {
+    const r = await fetch("/api/drawing");
+    if (!r.ok) return;
+    const d = await r.json();
+    drawingParts = d.parts || [];
+    const b = $("btn-clear-drawing");
+    b.disabled = !drawingParts.length;
+    b.textContent = drawingParts.length ? `🗑 Zeichnung (${drawingParts.length})` : "🗑 Zeichnung";
+  } catch { /* offline */ }
+}
+
+async function loadGhost() {
+  try {
+    const r = await fetch("/api/route/last");
+    if (!r.ok) return;
+    const d = await r.json();
+    ghost = d.has && d.plan ? d.plan : null;
+    previewTrajectory = d.trajectory || [];
+    $("btn-preview").disabled = previewTrajectory.length < 2;
+    const tag = $("ghost-tag");
+    if (tag) tag.hidden = !ghost;
+  } catch { /* offline */ }
+}
+
+async function pollSim() {
+  if (!simOn || statePending) return;
+  statePending = true;
+  try {
+    const res = await fetch(canvasMode === "sim" ? "/api/sim/state" : "/api/robot/tracking");
+    if (!res.ok) throw new Error("Telemetry unavailable");
+    const st = await res.json();
+    if (previewPlaying) return;
+    drawSim(st);
+    document.querySelector(".home-tag").textContent =
+      Math.hypot(st.x - 15, st.z + 10) <= 0.5 ? "🏠 Home · erreicht" : "🏠 Home";
+    $("sim-pos").textContent =
+      `x=${st.x.toFixed(1)}  z=${st.z.toFixed(1)}  ·  v=(${st.vx.toFixed(1)}, ${st.vz.toFixed(1)})` +
+      (st.error ? `  ·  FEHLER ${st.error_id}` : "");
+    const m = $("sim-mode");
+    m.textContent = st.mode;
+    m.className = (st.error || st.warning) ? "fault" :
+      ((canvasMode === "sim" ? st.mode !== "idle" : st.mode === "Live · Pfad") ? "move" : "");
+  } catch {
+    if (!previewPlaying) {
+      drawSim(null);
+      $("sim-pos").textContent = "x=–  z=–";
+      $("sim-mode").textContent = "Telemetrie nicht verfügbar";
+    }
+  } finally {
+    statePending = false;
+  }
+}
+
+function setupSimUi(mode) {
+  simOn = true;
+  canvasMode = mode;
+  const simulated = mode === "sim";
+  $("simpanel").hidden = false;
+  $("sim-motion").hidden = false;
+  for (const id of ["btn-home", "btn-path", "btn-reset"]) $(id).hidden = !simulated;
+  $("sim-jog").hidden = !simulated;
+  document.querySelector(".sim-title").textContent = simulated ? "Simulator" : "Live-Tracking";
+  $("badge-plc").textContent = simulated ? "PLC·sim" : "PLC";
+  const tg = $("sim-toggle");
+  tg.onclick = () => {
+    const p = $("simpanel");
+    p.classList.toggle("collapsed");
+    tg.textContent = p.classList.contains("collapsed") ? "▸" : "▾";
+    if (!p.classList.contains("collapsed")) fitCanvas();
+  };
+  fitCanvas();
+  loadWaypoints().catch(() => {});
+  loadGhost().catch(() => {});
+  loadDrawing();
+  loadBackground();
+  let pollCount = 0;
+  setInterval(() => {
+    pollSim();
+    if (pollCount % 5 === 0) loadDrawing();
+    if (pollCount % 10 === 0) loadBackground();
+    // Refresh the preview and the active profile bank every ~5 s.
+    if (++pollCount % 25 === 0) {
+      loadGhost().catch(() => {});
+      loadWaypoints().catch(() => {});
+    }
+  }, 200);
+  pollSim();
+
+  const post = (url, body) => fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  }).then(r => r.json()).catch(e => addBubble("err", "Sim: " + e.message));
+
+  $("btn-drawing-start").onclick = async () => {
+    const button = $("btn-drawing-start");
+    button.disabled = true;
+    try {
+      const result = await post("/api/robot/drawing-start");
+      if (!result?.ok && result) addBubble("err", result.error || result.reason);
+    } finally {
+      button.disabled = false;
+    }
+  };
+  $("btn-home").onclick  = () => post("/api/robot/home");
+  $("btn-path").onclick  = () => post("/api/robot/path/start");
+  $("btn-stop").onclick  = () => post("/api/robot/path/stop");
+  $("btn-reset").onclick = () => post("/api/sim/reset");
+  $("btn-preview").onclick = playPreview;
+  $("btn-bg").onclick = () => $("bg-file").click();
+  $("bg-file").onchange = async () => {
+    const file = $("bg-file").files[0];
+    $("bg-file").value = "";
+    if (!file) return;
+    const b = $("btn-bg");
+    b.disabled = true;
+    try { await uploadBackground(file); }
+    catch (e) { addBubble("err", "Bild-Upload fehlgeschlagen: " + e.message); }
+    finally { b.disabled = false; }
+  };
+  $("btn-bg-clear").onclick = async () => {
+    await fetch("/api/background", { method: "DELETE" }).catch(() => {});
+    loadBackground();
+  };
+  $("btn-clear-drawing").onclick = async () => {
+    if (!confirm(`Ganze Zeichnung (${drawingParts.length} Teile) vom Canvas löschen?`)) return;
+    const result = await post("/api/drawing/clear", { confirm: true });
+    if (result && !result.ok) addBubble("err", result.error);
+    loadDrawing();
+  };
+
+  // Tempo: playback speed of the visible simulation (1x = plant time)
+  for (const b of document.querySelectorAll(".speed")) {
+    b.onclick = () => {
+      document.querySelectorAll(".speed").forEach(o => o.classList.remove("on"));
+      b.classList.add("on");
+      previewSpeed = Number(b.dataset.scale);
+      if (simulated) post("/api/sim/speed", { time_scale: previewSpeed });
+    };
+  }
+
+  // Jog: Level-Signal — fahren solange gedrückt (Pointer-Events, Touch + Maus)
+  for (const btn of document.querySelectorAll(".jog")) {
+    const axis = btn.dataset.axis;
+    const positive = btn.dataset.positive === "true";
+    let active = false;
+    const fire = enabled => {
+      fetch("/api/robot/jog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ axis, positive, enabled }),
+      }).catch(() => {});
+    };
+    btn.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      if (active) return;
+      active = true;
+      try { btn.setPointerCapture(e.pointerId); } catch {}
+      btn.classList.add("on");
+      fire(true);
+    });
+    const release = () => {
+      if (!active) return;
+      active = false;
+      btn.classList.remove("on");
+      fire(false);
+    };
+    btn.addEventListener("pointerup", release);
+    btn.addEventListener("pointercancel", release);
+    btn.addEventListener("lostpointercapture", release);
+  }
+}
+
 async function pollHealth() {
   try {
     const res = await fetch("/api/health");
@@ -205,6 +937,7 @@ async function pollHealth() {
       const el = $(id);
       el.className = "badge " + (h[key] ? "on" : "off");
     }
+    if (!simOn && (h.plc_mode === "sim" || h.plc_mode === "live")) setupSimUi(h.plc_mode);
   } catch { /* offline */ }
 }
 pollHealth();

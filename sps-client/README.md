@@ -118,7 +118,8 @@ plc.close()
 | `wait_done(t)` / `wait_home_ready(t)` / `wait_no_fault(t)` | Polling bis Bedingung oder Timeout (gibt `False`) |
 | `wait_done_strict(t)` | wie `wait_done`, wirft `WaitTimeout` |
 
-Alle Werte sind **Rohwerte** (Int64/Boolean) ohne Ingenieur-Einheiten –
+Die Bewegungswerte sind OPC-UA-Doubles (`i=11`); Skalierung und Einheiten sind nicht bestätigt.
+Status- und Steuersignale werden als Booleans bzw. Integer geliefert –
 Skalierungsfaktoren (z. B. 0,1 mm pro LSB) müssen aus der Anlagendoku kommen.
 
 ## 5. Sicherheit

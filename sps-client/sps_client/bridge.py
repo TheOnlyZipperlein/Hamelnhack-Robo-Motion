@@ -42,13 +42,25 @@ class SyncPlc:
     attributes (e.g. ``config``) are passed through untouched.
     """
 
-    def __init__(self, config: PlcConfig | None = None, *, connect: bool = True) -> None:
+    def __init__(
+        self,
+        config: PlcConfig | None = None,
+        *,
+        connect: bool = True,
+        robot_cls: type | None = None,
+    ) -> None:
+        """Wrap a robot implementation (default :class:`Robot`).
+
+        ``robot_cls`` allows swapping in an alternative implementation with
+        the same API (e.g. :class:`sps_client.SimRobot` for the in-process
+        simulator) without touching the callers.
+        """
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(
             target=self._run_loop, name="sps-client-loop", daemon=True
         )
         self._thread.start()
-        self._robot = Robot(config)
+        self._robot = (robot_cls if robot_cls is not None else Robot)(config)
         self._closed = False
         if connect:
             self.call(self._robot.connect())

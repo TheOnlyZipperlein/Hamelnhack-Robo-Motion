@@ -64,19 +64,19 @@ Positions- und Dynamikparameter (X/Z-Position, Bahngeschwindigkeit,
 
 | Variable | Datentyp | ValueRank | Zugriff | Mutmaßliche Rolle |
 | --- | --- | --- | --- | --- |
-| `g_lrSetValue0` … `g_lrSetValue7` | `i=11` (Int64) | -1 | 3 | Sollwerte für 8 Kanäle/Achsen (Index 0–7) |
-| `g_lrOverride` | `i=11` (Int64) | -1 | 3 | Override-Faktor (z. B. Taster-Override) |
-| `g_lrSetPathVelOut` | `i=11` (Int64) | -1 | 3 | Bahngeschwindigkeits-Sollwert (Ausgang) |
+| `g_lrSetValue0` … `g_lrSetValue7` | `i=11` (Double) | -1 | 3 | Sollwerte für 8 Kanäle/Achsen (Index 0–7) |
+| `g_lrOverride` | `i=11` (Double) | -1 | 3 | Override-Faktor (z. B. Taster-Override) |
+| `g_lrSetPathVelOut` | `i=11` (Double) | -1 | 3 | Bahngeschwindigkeits-Sollwert (Ausgang) |
 
 ### 3.3 Ist-Werte
 
 | Variable | Datentyp | ValueRank | Zugriff | Mutmaßliche Rolle |
 | --- | --- | --- | --- | --- |
-| `g_lrActValue0` … `g_lrActValue7` | `i=11` (Int64) | -1 | 3 | Istwerte für 8 Kanäle/Achsen |
-| `g_lrActXPos` | `i=11` (Int64) | -1 | 3 | Ist-X-Position |
-| `g_lrActXVel` | `i=11` (Int64) | -1 | 3 | Ist-X-Geschwindigkeit |
-| `g_lrActZPos` | `i=11` (Int64) | -1 | 3 | Ist-Z-Position |
-| `g_lrActZVel` | `i=11` (Int64) | -1 | 3 | Ist-Z-Geschwindigkeit |
+| `g_lrActValue0` … `g_lrActValue7` | `i=11` (Double) | -1 | 3 | Istwerte für 8 Kanäle/Achsen |
+| `g_lrActXPos` | `i=11` (Double) | -1 | 3 | Ist-X-Position |
+| `g_lrActXVel` | `i=11` (Double) | -1 | 3 | Ist-X-Geschwindigkeit |
+| `g_lrActZPos` | `i=11` (Double) | -1 | 3 | Ist-Z-Position |
+| `g_lrActZVel` | `i=11` (Double) | -1 | 3 | Ist-Z-Geschwindigkeit |
 
 ### 3.4 Steuer-, Status- und Fehlerworte
 
@@ -124,12 +124,12 @@ Jedes Arrayelement `g_ascProfilePar[n]` (n = 1…10) enthält:
 
 | Glied | Datentyp | ValueRank | Zugriff | Mutmaßliche Bedeutung |
 | --- | --- | --- | --- | --- |
-| `lrXPos` | `i=11` (Int64) | -1 | 3 | X-Position des Profils |
-| `lrZPos` | `i=11` (Int64) | -1 | 3 | Z-Position des Profils |
-| `lrPathVel` | `i=11` (Int64) | -1 | 3 | Bahngeschwindigkeit |
-| `lrPathAcc` | `i=11` (Int64) | -1 | 3 | Beschleunigung |
-| `lrPathDec` | `i=11` (Int64) | -1 | 3 | Dezeleration |
-| `lrBlendingRadius` | `i=11` (Int64) | -1 | 3 | Blendradius |
+| `lrXPos` | `i=11` (Double) | -1 | 3 | X-Position des Profils |
+| `lrZPos` | `i=11` (Double) | -1 | 3 | Z-Position des Profils |
+| `lrPathVel` | `i=11` (Double) | -1 | 3 | Bahngeschwindigkeit |
+| `lrPathAcc` | `i=11` (Double) | -1 | 3 | Beschleunigung |
+| `lrPathDec` | `i=11` (Double) | -1 | 3 | Dezeleration |
+| `lrBlendingRadius` | `i=11` (Double) | -1 | 3 | Blendradius |
 | `xHalt` | `i=1` (Boolean) | -1 | 3 | Halt-Flag des Profils |
 
 Direkt unter `g_ascProfilePar` (nicht in den Elementen) liegen drei nur
@@ -175,7 +175,7 @@ NodeId-Schema (vollständige Liste in `out/run-20261121-172846/`):
 ## 6. Lesehilfe
 
 - **Datentypen (Namespace 0):** `i=1` = Boolean, `i=6` = Int32, `i=7` =
-  UInt32, `i=11` = Int64. Alle `lr*`-Werte sind Int64 – die skalierte
+  UInt32, `i=11` = Double. Alle `lr*`-Werte sind Double – die skalierte
   physikalische Einheit (z. B. mm, µm, mm/s) ist aus den Metadaten **nicht**
   ersichtlich und muss aus der Anlagendokumentation übernommen werden.
 - **ValueRank:** `-1` = Skalar, `0` = beliebige Dimension, `1` =
@@ -193,7 +193,7 @@ NodeId-Schema (vollständige Liste in `out/run-20261121-172846/`):
    aus Metadaten nicht ableitbar.
 2. **Typ `ns=3;i=3002`** (alle `g_w*`-Worte): Definition unbekannt,
    Namespace 3 wurde nicht gescannt.
-3. **Skalierung/Einheiten:** Int64-Werte ohne Units-Metadaten; Faktoren
+3. **Skalierung/Einheiten:** Double-Werte ohne Units-Metadaten; Faktoren
    (z. B. 0,1 mm pro LSB) sind anlagenseitig zu klären.
 4. **Handshake/Timing:** Aus der Schnittstelle geht nicht hervor, wie
    Befehle zu quittieren sind (Edge- vs. Level-Signale), welche Zykluszeiten
